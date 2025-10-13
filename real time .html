@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Real-Time Stock Ticker</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+  }
+
+  .ticker-container {
+    width: 100%;
+    overflow: hidden;
+    background: #222;
+    border: 1px solid #444;
+    padding: 10px 0;
+    box-sizing: border-box;
+  }
+
+  .ticker {
+    display: inline-block;
+    white-space: nowrap;
+    animation: tickerMove 20s linear infinite;
+  }
+
+  .ticker-item {
+    display: inline-block;
+    margin-right: 50px;
+    font-weight: bold;
+  }
+
+  .up {
+    color: #4caf50;
+  }
+
+  .down {
+    color: #f44336;
+  }
+
+  @keyframes tickerMove {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>Real-Time Stock Ticker</h1>
+
+<div class="ticker-container">
+  <div class="ticker" id="ticker">
+    Loading...
+  </div>
+</div>
+
+<script>
+  const apiKey = 'YOUR_API_KEY_HERE';  // Replace with your Finnhub API key
+  const symbols = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA'];
+
+  async function fetchStockPrice(symbol) {
+    const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('API Error');
+      const data = await response.json();
+      // data.c = current price, data.pc = previous close
+      return {
+        symbol,
+        current: data.c,
+        previousClose: data.pc,
+        change: data.c - data.pc,
+        changePercent: ((data.c - data.pc) / data.pc) * 100,
+      };
+    } catch (error) {
+      console.error('Fetch error:', error);
+      return null;
+    }
+  }
+
+  async function updateTicker() {
+    const ticker = document.getElementById('ticker');
+    ticker.innerHTML = 'Loading...';
+
+    const promises = symbols.map(sym => fetchStockPrice(sym));
+    const results = await Promise.all(promises);
+
+    // Filter out any null results (failed fetch)
+    const validResults = results.filter(r => r !== null);
+
+    if (validResults.length === 0) {
+      ticker.innerHTML = 'Failed to load stock data.';
+      return;
+    }
+
+    ticker.innerHTML = ''; // Clear loading text
+
+    validResults.forEach(stock => {
+      const item = document.createElement('span');
+      item.classList.add('ticker-item');
+
+      // Color green if up, red if down
+      item.classList.add(stock.change >= 0 ? 'up' : 'down');
+
+      item.innerHTML = `${stock.symbol}: $${stock.current.toFixed(2)} (${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}, ${stock.changePercent.toFixed(2)}%)`;
+      ticker.appendChild(item);
+    });
+  }
+
+  // Initial load
+  updateTicker();
+
+  // Update every 60 seconds
+  setInterval(updateTicker, 60000);
+</script>
+
+</body>
+</html>
